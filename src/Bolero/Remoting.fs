@@ -43,6 +43,10 @@ type IRemoteProvider =
     abstract GetService<'T> : basePath: string -> 'T
     abstract GetService<'T when 'T :> IRemoteService> : unit -> 'T
 
+type ESerializationType =
+    | Json        = 0
+    | QueryString = 1
+    | PathString  = 2
 /// [omit]
 type RemoteMethodDefinition =
     {
