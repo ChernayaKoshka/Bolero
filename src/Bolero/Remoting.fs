@@ -96,8 +96,18 @@ type RemotingExtensions =
                 match res with
                 | Ok _ -> Error [msg]
                 | Error e -> Error (msg :: e)
+
             let ok x =
                 res |> Result.map (fun l -> x :: l)
+
+            let serializationType =
+                let attribute = Attribute.GetCustomAttribute(field, typeof<RemoteMethodOptionsAttribute>)
+                if isNull attribute then
+                    ESerializationType.Json
+                else
+                    let remoteOptions = (attribute :?> RemoteMethodOptionsAttribute)
+                    remoteOptions.SerializationType
+
             if not (FSharpType.IsFunction field.PropertyType) then
                 fail "Remote type field must be an F# function: %s"
             else
@@ -110,6 +120,7 @@ type RemotingExtensions =
             let resValueTy = resTy.GetGenericArguments().[0]
             ok {
                 Name = field.Name
+                SerializationType = serializationType
                 FunctionType = field.PropertyType
                 ArgumentType = argTy
                 ReturnType = resValueTy
