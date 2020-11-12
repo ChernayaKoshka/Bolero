@@ -91,8 +91,8 @@ type RemotingExtensions =
         let fields = FSharpType.GetRecordFields(ty, true)
         (fields, Ok [])
         ||> Array.foldBack (fun field res ->
-            let fail fmt =
-                let msg = sprintf fmt (ty.FullName + "." + field.Name)
+            let fail msg =
+                let msg = (sprintf "%s.%s:" ty.FullName field.Name) + msg
                 match res with
                 | Ok _ -> Error [msg]
                 | Error e -> Error (msg :: e)
@@ -109,13 +109,13 @@ type RemotingExtensions =
                     remoteOptions.SerializationType
 
             if not (FSharpType.IsFunction field.PropertyType) then
-                fail "Remote type field must be an F# function: %s"
+                fail "Remote type field must be an F# function"
             else
             let argTy, resTy = FSharpType.GetFunctionElements(field.PropertyType)
             if FSharpType.IsFunction resTy then
-                fail "Remote type field must be an F# function with only one argument: %s. Use a tuple if several arguments are needed"
+                fail "Remote type field must be an F# function with only one argument. Use a tuple if several arguments are needed"
             elif not (resTy.IsGenericType && resTy.GetGenericTypeDefinition() = typedefof<Async<_>>) then
-                fail "Remote function must return Async<_>: %s"
+                fail "Remote function must return Async<_>"
             else
             let resValueTy = resTy.GetGenericArguments().[0]
             ok {
