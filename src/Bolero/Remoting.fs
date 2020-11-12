@@ -47,10 +47,18 @@ type ESerializationType =
     | Json        = 0
     | QueryString = 1
     | PathString  = 2
+
+
+[<AttributeUsage(AttributeTargets.Property)>]
+type RemoteMethodOptionsAttribute(serializationType: ESerializationType) =
+    inherit Attribute()
+    member val SerializationType = serializationType
+
 /// [omit]
 type RemoteMethodDefinition =
     {
         Name: string
+        SerializationType: ESerializationType
         FunctionType: Type
         ArgumentType: Type
         ReturnType: Type
