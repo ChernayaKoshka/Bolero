@@ -111,19 +111,19 @@ type RemotingExtensions =
             if not (FSharpType.IsFunction field.PropertyType) then
                 fail "Remote type field must be an F# function"
             else
-            let argTy, resTy = FSharpType.GetFunctionElements(field.PropertyType)
-            if FSharpType.IsFunction resTy then
-                fail "Remote type field must be an F# function with only one argument. Use a tuple if several arguments are needed"
-            elif not (resTy.IsGenericType && resTy.GetGenericTypeDefinition() = typedefof<Async<_>>) then
-                fail "Remote function must return Async<_>"
-            else
-            let resValueTy = resTy.GetGenericArguments().[0]
-            ok {
-                Name = field.Name
-                SerializationType = serializationType
-                FunctionType = field.PropertyType
-                ArgumentType = argTy
-                ReturnType = resValueTy
-            }
+                let argTy, resTy = FSharpType.GetFunctionElements(field.PropertyType)
+                if FSharpType.IsFunction resTy then
+                    fail "Remote type field must be an F# function with only one argument. Use a tuple if several arguments are needed"
+                elif not (resTy.IsGenericType && resTy.GetGenericTypeDefinition() = typedefof<Async<_>>) then
+                    fail "Remote function must return Async<_>"
+                else
+                    let resValueTy = resTy.GetGenericArguments().[0]
+                    ok {
+                        Name = field.Name
+                        SerializationType = serializationType
+                        FunctionType = field.PropertyType
+                        ArgumentType = argTy
+                        ReturnType = resValueTy
+                    }
         )
         |> Result.map Array.ofList
