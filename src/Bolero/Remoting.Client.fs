@@ -64,16 +64,24 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
         if not (basePath.EndsWith("/")) then sb.Append('/') |> ignore
         sb.ToString()
 
-    let send (method: HttpMethod) (requestUri: string) (content: obj) =
-        let content = JsonSerializer.Serialize(content, serOptions)
-        new HttpRequestMessage(method, requestUri,
-            Content = new StringContent(content, Encoding.UTF8, "application/json")
-        )
+    let send (method: HttpMethod) (serializationType: ESerializationType) (requestUri: string) (content: obj) =
+        match serializationType with
+        | ESerializationType.Json ->
+            let content = JsonSerializer.Serialize(content, serOptions)
+            new HttpRequestMessage(method, requestUri,
+                Content = new StringContent(content, Encoding.UTF8, "application/json")
+            )
+        | ESerializationType.QueryString ->
+            let queryString =
+                match QueryStringSerializer.serialize content with
+                | Ok queryString -> queryString
+                | Error error -> failwith error
+            new HttpRequestMessage(method, requestUri.TrimEnd('/') + queryString)
         |> http.SendAsync
         |> Async.AwaitTask
 
-    member this.SendAndParse<'T>(method, requestUri, content) = async {
-        let! resp = send method requestUri content
+    member this.SendAndParse<'T>(method, serializationType, requestUri, content) = async {
+        let! resp = send method serializationType requestUri content
         match resp.StatusCode with
         | HttpStatusCode.OK ->
             let! respBody = resp.Content.ReadAsStreamAsync() |> Async.AwaitTask
@@ -99,7 +107,7 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
                         .MakeGenericMethod([|method.ReturnType|])
                 FSharpValue.MakeFunction(method.FunctionType, fun arg ->
                     let uri = !baseUri + method.Name
-                    post.Invoke(this, [|HttpMethod.Post; uri; arg|])
+                    post.Invoke(this, [|HttpMethod.Post; method.SerializationType; uri; arg|])
                 )
             )
             |> ctor
