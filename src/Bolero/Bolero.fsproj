@@ -14,6 +14,7 @@
     <Compile Include="ProgramRun.fs" />
     <Compile Include="Components.fs" />
     <Compile Include="Remoting.fs" />
+    <Compile Include="RemotingSerializers/QueryStringSerializer.fs" />
     <Compile Include="Remoting.Client.fs" />
     <Compile Include="Cmd.fs" />
     <Compile Include="Program.fs" />
