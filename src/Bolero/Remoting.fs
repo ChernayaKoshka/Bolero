@@ -46,8 +46,6 @@ type IRemoteProvider =
 type ESerializationType =
     | Json        = 0
     | QueryString = 1
-    | PathString  = 2
-
 
 [<AttributeUsage(AttributeTargets.Property)>]
 type RemoteMethodOptionsAttribute(serializationType: ESerializationType) =
