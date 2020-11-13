@@ -28,6 +28,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Bolero.Remoting
 open Bolero.Remoting.Server
 open Bolero.Server.RazorHost
 
@@ -52,7 +53,7 @@ type MyApiHandler(log: ILogger<MyApiHandler>, ctx: IRemoteContext) =
             }
             login = fun login -> async {
                 log.LogInformation("User logging in: {0}", login)
-                return! ctx.HttpContext.AsyncSignIn(login, TimeSpan.FromDays(365. * 10.))
+                return! ctx.HttpContext.AsyncSignIn(login.name, TimeSpan.FromDays(365. * 10.))
             }
             logout = fun () -> async {
                 log.LogInformation("User logging out: {0}", ctx.HttpContext.User.Identity.Name)
