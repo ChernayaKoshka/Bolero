@@ -84,7 +84,7 @@ type internal RemotingService(basePath: PathString, ty: Type, handler: obj, conf
             typeof<RemotingService>.GetMethod("InvokeForClientSide", flags)
                 .MakeGenericMethod(method.ArgumentType, method.ReturnType)
         fun (ctx: HttpContext) ->
-            output.Invoke(this, [|meth; ctx|]) :?> Task
+            output.Invoke(this, [|method.SerializationType; meth; ctx|]) :?> Task
 
     let methodData =
         match RemotingExtensions.ExtractRemoteMethods ty with
@@ -102,9 +102,20 @@ type internal RemotingService(basePath: PathString, ty: Type, handler: obj, conf
 
     member val ServerSideService = handler
 
-    member private _.InvokeForClientSide<'req, 'resp>(func: 'req -> Async<'resp>, ctx: HttpContext) : Task =
+    member private _.InvokeForClientSide<'req, 'resp>(stype: ESerializationType, func: 'req -> Async<'resp>, ctx: HttpContext) : Task =
         task {
-            let! arg = JsonSerializer.DeserializeAsync<'req>(ctx.Request.Body, serOptions).AsTask()
+            let! arg =
+                match stype with
+                | ESerializationType.Json ->
+                    JsonSerializer.DeserializeAsync<'req>(ctx.Request.Body, serOptions).AsTask()
+                | ESerializationType.QueryString -> task {
+                    return
+                        // the deserializer will handle the case where the query string is null and the return type is unit gracefully
+                        // otherwise, it will return an error
+                        match (QueryStringSerializer.deserialize<'req> ctx.Request.QueryString.Value) with
+                        | Ok res -> res
+                        | Error err -> failwith err
+                }
             try
                 let! x = func arg
                 return! JsonSerializer.SerializeAsync<'resp>(ctx.Response.Body, x, serOptions)
