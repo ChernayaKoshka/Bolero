@@ -77,14 +77,11 @@ type Startup() =
 
     // just a dummy function to write a JSON response of the query value passed in
     let echo: RequestDelegate =
-        let jsonOptions = JsonSerializerOptions()
-        jsonOptions.Converters.Add(Serialization.JsonFSharpConverter())
-
         RequestDelegate(fun (context: HttpContext) ->
             let task = task {
                 let echo = string context.Request.Query.["value"]
                 context.Response.ContentType <- "application/json"
-                do! context.Response.WriteAsync(JsonSerializer.Serialize(sprintf "Right back at ya!: %s" echo, jsonOptions))
+                do! context.Response.WriteAsync(JsonSerializer.Serialize($"Right back at ya!: {echo}"))
             }
             task :> Task)
 
