@@ -1,3 +1,6 @@
+// TODO: Techncially, query strings can contain multiple values.
+// For example, Value=1,2,3
+// Should we allow `seq` serializaiton/deserialization in this case?
 module Bolero.Remoting.QueryStringSerializer
 
 open System
@@ -92,6 +95,34 @@ module private Serialize =
 
 // TODO: Purely for organization, could be moved up?
 module private Deserialize =
+    // caching on startup so we don't keep making calls to GetUnionCases/MakeUnion every time
+    // precomputing constructors
+    let primOptCtors =
+        [
+            typeof<bool option>
+            typeof<byte option>
+            typeof<sbyte option>
+            typeof<char option>
+            typeof<decimal option>
+            typeof<double option>
+            typeof<single option>
+            typeof<int32 option>
+            typeof<uint32 option>
+            typeof<int64 option>
+            typeof<uint64 option>
+            typeof<int16 option>
+            typeof<uint16 option>
+            typeof<string option>
+        ]
+        |> List.map (fun typ ->
+            typ,
+            typ
+            |> FSharpType.GetUnionCases
+            |> Array.find (fun uc -> uc.Name = "Some")
+            |> FSharpValue.PreComputeUnionConstructor
+        )
+        |> dict
+
     let fillPropertyValues<'T> (values: (string * string) array) (props: PropertyInfo array) =
         let t = typeof<'T>
         let valueMap = Map.ofArray values
@@ -102,10 +133,7 @@ module private Deserialize =
                 |> Array.map (fun prop ->
                     match Map.tryFind prop.Name valueMap, isOptionType prop.PropertyType with
                     | Some value, true ->
-                        let someCase =
-                            FSharpType.GetUnionCases(prop.PropertyType)
-                            |> Array.find (fun uc -> uc.Name = "Some")
-                        FSharpValue.MakeUnion(someCase, [| Convert.ChangeType(value, prop.PropertyType.GetGenericArguments().[0]) |])
+                        primOptCtors.[prop.PropertyType] [| Convert.ChangeType(value, prop.PropertyType.GetGenericArguments().[0]) |]
                     | Some value, false ->
                         Convert.ChangeType(value, prop.PropertyType)
                     | None, true ->
@@ -130,7 +158,7 @@ module private Deserialize =
     let deserialize<'T>(queryString: string) =
         let t = typeof<'T>
         if t = typeof<unit> then
-            // need to return default (resulting in `unit` anyway!) in order to keep the compiler happy
+            // need to return using Unchecked.defaultof<'T> (resulting in `unit` anyway!) in order to keep the compiler happy
             Ok <| Unchecked.defaultof<'T>
         else if isNull queryString then
             Error "Query string cannot be null when the type is not unit."
