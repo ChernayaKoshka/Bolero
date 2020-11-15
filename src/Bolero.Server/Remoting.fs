@@ -102,13 +102,13 @@ type internal RemotingService(basePath: PathString, ty: Type, handler: obj, conf
 
     member val ServerSideService = handler
 
-    member private _.InvokeForClientSide<'req, 'resp>(stype: ESerializationType, func: 'req -> Async<'resp>, ctx: HttpContext) : Task =
+    member private _.InvokeForClientSide<'req, 'resp>(stype: SerializationType, func: 'req -> Async<'resp>, ctx: HttpContext) : Task =
         task {
             let! arg =
                 match stype with
-                | ESerializationType.Json ->
+                | JsonSerialization ->
                     JsonSerializer.DeserializeAsync<'req>(ctx.Request.Body, serOptions).AsTask()
-                | ESerializationType.QueryString -> task {
+                | QueryStringSerialization -> task {
                     return
                         // the deserializer will handle the case where the query string is null and the return type is unit gracefully
                         // otherwise, it will return an error

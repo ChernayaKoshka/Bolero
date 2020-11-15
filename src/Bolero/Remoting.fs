@@ -48,16 +48,25 @@ type ESerializationType =
     | Json        = 0
     | QueryString = 1
 
+// little bit of extra type safety not using an enum where possible
+type SerializationType =
+    | JsonSerialization
+    | QueryStringSerialization
+
 [<AttributeUsage(AttributeTargets.Property)>]
 type RemoteMethodOptionsAttribute(serializationType: ESerializationType) =
     inherit Attribute()
-    member val SerializationType = serializationType
+    member val SerializationType =
+        match serializationType with
+        | ESerializationType.Json -> JsonSerialization
+        | ESerializationType.QueryString -> QueryStringSerialization
+        | other -> failwithf "Unsupported ESerializationType %A" other
 
 /// [omit]
 type RemoteMethodDefinition =
     {
         Name: string
-        SerializationType: ESerializationType
+        SerializationType: SerializationType
         FunctionType: Type
         ArgumentType: Type
         ReturnType: Type
@@ -102,7 +111,7 @@ type RemotingExtensions =
             let serializationType =
                 let attribute = Attribute.GetCustomAttribute(field, typeof<RemoteMethodOptionsAttribute>)
                 if isNull attribute then
-                    ESerializationType.Json
+                    JsonSerialization
                 else
                     let remoteOptions = (attribute :?> RemoteMethodOptionsAttribute)
                     remoteOptions.SerializationType

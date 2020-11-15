@@ -64,14 +64,14 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
         if not (basePath.EndsWith("/")) then sb.Append('/') |> ignore
         sb.ToString()
 
-    let send (method: HttpMethod) (serializationType: ESerializationType) (requestUri: string) (content: obj) =
+    let send (method: HttpMethod) (serializationType: SerializationType) (requestUri: string) (content: obj) =
         match serializationType with
-        | ESerializationType.Json ->
+        | JsonSerialization ->
             let content = JsonSerializer.Serialize(content, serOptions)
             new HttpRequestMessage(method, requestUri,
                 Content = new StringContent(content, Encoding.UTF8, "application/json")
             )
-        | ESerializationType.QueryString ->
+        | QueryStringSerialization ->
             let queryString =
                 match QueryStringSerializer.serialize content with
                 | Ok queryString -> queryString
