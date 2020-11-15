@@ -83,10 +83,16 @@ module private Serialize =
         )
 
     let serialize (toSerialize: obj) =
-        let t = toSerialize.GetType()
-        if t = typeof<unit> then
+        // has the potential to parse a serialize `None` value successfully
+        // because the representation of unit/None are both `null`. This makes it
+        // impossible to check if we were passed a unit vs None because a call to
+        // .GetType() will kick a NullReferenceException. However, supporting
+        // empty queries is more important than the potential of someone passing in a None
+        // value (or, worse, an actual `null` 😬)
+        if isNull toSerialize then
             Ok String.Empty
         else
+            let t = toSerialize.GetType()
             t
             |> getRecordFields
             |> Result.bind (areConstraintsSatisfied t)
