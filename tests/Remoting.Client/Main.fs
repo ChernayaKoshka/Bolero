@@ -33,9 +33,7 @@ type MyApi =
         getItems : unit -> Async<Map<int, string>>
         setItem : (int * string) -> Async<unit>
         removeItem : int -> Async<unit>
-
-        [<RemoteMethodOptions(ESerializationType.QueryString)>]
-        login : {| name: string |} -> Async<unit>
+        login : string -> Async<unit>
         logout : unit -> Async<unit>
         getLogin : unit -> Async<string>
         authDouble : int -> Async<int>
@@ -145,7 +143,7 @@ let Update (myApi: MyApi) (myNonBoleroApi: MyNonBoleroApi) msg model =
     | SetLoginInput s ->
         { model with loginInput = s }, []
     | Login ->
-        model, Cmd.OfAsync.either myApi.login {| name = model.loginInput |} (fun _ -> GetLogin) Exn
+        model, Cmd.OfAsync.either myApi.login model.loginInput (fun _ -> GetLogin) Exn
     | Logout ->
         model, Cmd.OfAsync.either myApi.logout () (fun () -> LoggedOut) Exn
     | LoggedIn res ->
