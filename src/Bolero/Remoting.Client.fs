@@ -114,6 +114,8 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
 
     interface IRemoteProvider with
 
+        member val IsServerSide = false with get
+
         member this.GetService<'T>(basePath: string) =
             let basePath = normalizeBasePath(basePath)
             this.MakeRemoteProxy(typeof<'T>, ref basePath) :?> 'T
@@ -124,9 +126,33 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
             basePath := normalizeBasePath proxy.BasePath
             proxy
 
+open Bolero
 /// Extension methods to enable support for remoting in ProgramComponent.
 [<Extension>]
 type ClientRemotingExtensions =
+    /// Get an instance of the given remote service, whose URL has the given base path.
+    [<Extension>]
+    static member NonBoleroRemote<'T>(this: IProgramComponent, basePath: string) =
+        let remote = this.RemoteProvider()
+        if remote.IsServerSide then
+            // should only occur during server-side initialization
+            // TODO: Verify that it works fine with server-side... everything
+            // Return Option<'T> instead? Result<'T, string>?
+            Unchecked.defaultof<'T>
+        else
+            remote.GetService<'T>(basePath)
+
+    /// Get an instance of the given remote service.
+    [<Extension>]
+    static member NonBoleroRemote<'T when 'T :> IRemoteService>(this: IProgramComponent) =
+        let remote = this.RemoteProvider()
+        if remote.IsServerSide then
+            // should only occur during server-side initialization
+            // TODO: Verify that it works fine with server-side... everything
+            // Return Option<'T> instead? Result<'T, string>?
+            Unchecked.defaultof<'T>
+        else
+            remote.GetService<'T>()
 
     /// Enable support for remoting in ProgramComponent.
     [<Extension>]
