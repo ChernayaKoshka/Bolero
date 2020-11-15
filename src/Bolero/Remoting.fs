@@ -60,7 +60,7 @@ type RemoteMethodOptionsAttribute(serializationType: ESerializationType) =
         match serializationType with
         | ESerializationType.Json -> JsonSerialization
         | ESerializationType.QueryString -> QueryStringSerialization
-        | other -> failwithf "Unsupported ESerializationType %A" other
+        | other -> failwith $"Unsupported ESerializationType {other}"
 
 /// [omit]
 type RemoteMethodDefinition =
@@ -100,7 +100,7 @@ type RemotingExtensions =
         (fields, Ok [])
         ||> Array.foldBack (fun field res ->
             let fail msg =
-                let msg = (sprintf "%s.%s:" ty.FullName field.Name) + msg
+                let msg = $"{ty.FullName}.{field.Name}: {msg}"
                 match res with
                 | Ok _ -> Error [msg]
                 | Error e -> Error (msg :: e)

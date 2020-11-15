@@ -96,7 +96,7 @@ type ClientRemoteProvider(http: HttpClient, configureSerialization: IConfigureSe
         match RemotingExtensions.ExtractRemoteMethods(ty) with
         | Error errors ->
             raise <| AggregateException(
-                "Cannot create remoting handler for type " + ty.FullName,
+                $"Cannot create remoting handler for type {ty.FullName}",
                 [| for e in errors -> exn e |])
         | Ok methods ->
             let ctor = FSharpValue.PreComputeRecordConstructor(ty, true)
