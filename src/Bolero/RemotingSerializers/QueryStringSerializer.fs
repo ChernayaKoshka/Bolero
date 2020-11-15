@@ -141,6 +141,7 @@ module private Deserialize =
                     | None, false ->
                         raise (System.Collections.Generic.KeyNotFoundException("The given key was not present in the dictionary."))
                 )
+            // TODO: could potentially cache record constructors as they come in?
             FSharpValue.MakeRecord(t, recordFields)
             :?> 'T
             |> Ok
