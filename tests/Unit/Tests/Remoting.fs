@@ -69,3 +69,83 @@ module Remoting =
         elt.Eventually <@ elt.ByClass("is-signedin").Text = "admin" @>
         elt.ByClass("get-admin").Click()
         elt.Eventually <@ elt.ByClass("is-admin").Text = "admin ok" @>
+
+    // TODO: should these tests be elsewhere?
+    open System
+    open Bolero.Remoting
+
+    let unwrap (item : Result<_, string>) =
+        match item with
+        | Ok item -> item
+        | Error err -> failwith err
+
+    let isOk = function Ok _ -> true | Error _ -> false
+
+    // TODO: Belongs elsewhere?
+    [<Test>]
+    let ``Serializing a record should result in a well formed query`` () =
+        let testRecord : {|  AnInteger: int; OptionalData: Option<string> ; SomeData: string |} =
+            {|  AnInteger = 20; OptionalData = Some "Optional data"; SomeData = "Some ^|^ data" |}
+        let result = QueryStringSerializer.serialize(testRecord)
+        Assert.True(isOk result)
+        let result = unwrap result
+        let expected = """?AnInteger=20&OptionalData=Optional+data&SomeData=Some+%5E%7C%5E+data"""
+        Assert.AreEqual(expected, result)
+
+    [<Test>]
+    let ``Serializing a record with None value should result in a well formed query`` () =
+        let testRecord : {|  AnInteger: int; OptionalData: Option<string> ; SomeData: string |} =
+            {|  AnInteger = 20; OptionalData = None; SomeData = "Some ^|^ data" |}
+        let result = QueryStringSerializer.serialize(testRecord)
+        Assert.True(isOk result)
+        let result = unwrap result
+        let expected = """?AnInteger=20&SomeData=Some+%5E%7C%5E+data"""
+        Assert.AreEqual(expected, result)
+
+    [<Test>]
+    let ``Serializing a unit value should result in a well formed query`` () =
+        let result = QueryStringSerializer.serialize(())
+        Assert.True(isOk result)
+        let result = unwrap result
+        Assert.AreEqual(String.Empty, result)
+
+    [<Test>]
+    let ``Serializing a record with a non primitive should return Error`` () =
+        let testRecord = {| SomeData = "Some ^|^ Data"; NonPrimitive = Uri("http://google.com") |}
+        let result = QueryStringSerializer.serialize(testRecord)
+        Assert.False(isOk result)
+
+    [<Test>]
+    let ``Serializing a non-record type should return Error`` () =
+        let testType = Uri("http://google.com")
+        let result = QueryStringSerializer.serialize(testType)
+        Assert.False(isOk result)
+
+    [<Test>]
+    let ``Deserializing from a well formed query string should succeed`` () =
+        let result =
+            QueryStringSerializer.deserialize<{| AnInteger: int; OptionalData: Option<string> ; SomeData: string |}>
+                ("""?AnInteger=20&OptionalData=Optional+data&SomeData=Some+%5E%7C%5E+data""")
+        Assert.True(isOk result)
+        let result = unwrap result
+        let expected : {|  AnInteger: int; OptionalData: Option<string> ; SomeData: string |} =
+            {|  AnInteger = 20; OptionalData = Some "Optional data"; SomeData = "Some ^|^ data" |}
+        Assert.AreEqual(expected, result)
+
+    [<Test>]
+    let ``Deserializing to a record with a None value from a well formed query string should succeed`` () =
+        let result =
+            QueryStringSerializer.deserialize<{| AnInteger: int; OptionalData: Option<string>; SomeData: string |}>
+                ("""?AnInteger=20&SomeData=Some+%5E%7C%5E+data""")
+        Assert.True(isOk result)
+        let result = unwrap result
+        let expected : {|  AnInteger: int; OptionalData: Option<string> ; SomeData: string |} =
+            {|  AnInteger = 20; OptionalData = None; SomeData = "Some ^|^ data" |}
+        Assert.AreEqual(expected, result)
+
+    [<Test>]
+    let ``Deserializing a unit value from a well formed query string should succeed`` () =
+        let result = QueryStringSerializer.deserialize<unit>(String.Empty)
+        Assert.True(isOk result)
+        let result = unwrap result
+        Assert.AreEqual((), result)
