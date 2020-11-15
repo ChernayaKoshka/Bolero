@@ -21,10 +21,14 @@
 namespace Bolero.Tests.Remoting
 
 open System
+open System.Text.Json
+open System.Threading.Tasks
+open FSharp.Control.Tasks.V2.ContextInsensitive
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -71,6 +75,19 @@ type MyApiHandler(log: ILogger<MyApiHandler>, ctx: IRemoteContext) =
 
 type Startup() =
 
+    // just a dummy function to write a JSON response of the query value passed in
+    let echo: RequestDelegate =
+        let jsonOptions = JsonSerializerOptions()
+        jsonOptions.Converters.Add(Serialization.JsonFSharpConverter())
+
+        RequestDelegate(fun (context: HttpContext) ->
+            let task = task {
+                let echo = string context.Request.Query.["value"]
+                context.Response.ContentType <- "application/json"
+                do! context.Response.WriteAsync(JsonSerializer.Serialize(sprintf "Right back at ya!: %s" echo, jsonOptions))
+            }
+            task :> Task)
+
     member this.ConfigureServices(services: IServiceCollection) =
         services.AddMvc().AddRazorRuntimeCompilation() |> ignore
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -90,7 +107,9 @@ type Startup() =
             .UseBlazorFrameworkFiles()
             .UseEndpoints(fun endpoints ->
                 endpoints.MapBlazorHub() |> ignore
-                endpoints.MapFallbackToPage("/_Host") |> ignore)
+                endpoints.MapFallbackToPage("/_Host") |> ignore
+                endpoints.MapPost("/nonboleroapi/echo", echo) |> ignore
+            )
         |> ignore
 
         if env.IsDevelopment() then
