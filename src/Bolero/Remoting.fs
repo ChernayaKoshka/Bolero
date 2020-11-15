@@ -40,6 +40,7 @@ type IRemoteService =
 
 /// Provides remote service implementations.
 type IRemoteProvider =
+    abstract member IsServerSide: bool with get
     abstract GetService<'T> : basePath: string -> 'T
     abstract GetService<'T when 'T :> IRemoteService> : unit -> 'T
 
