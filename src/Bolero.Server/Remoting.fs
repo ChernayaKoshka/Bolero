@@ -152,6 +152,8 @@ type internal ServerRemoteProvider(services: seq<RemotingService>) =
 
     interface IRemoteProvider with
 
+        member val IsServerSide = true with get
+
         member this.GetService<'T>(_basePath: string) =
             this.GetService<'T>()
 
