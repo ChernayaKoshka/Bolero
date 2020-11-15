@@ -44,6 +44,15 @@ type MyApi =
     interface IRemoteService with
         member this.BasePath = "/myapi"
 
+type MyNonBoleroApi =
+    {
+        [<RemoteMethodOptions(ESerializationType.QueryString)>]
+        echo : {| value: string |} -> Async<string>
+    }
+
+    interface IRemoteService with
+        member this.BasePath = "/nonboleroapi"
+
 type Page =
     | Home
     | Custom of int
@@ -53,6 +62,8 @@ type Model =
         page: Page
         currentKey: int
         currentValue: string
+        nonBoleroValue: string
+        nonBoleroResult: string
         items : Map<int, string>
         lastError : option<string>
         loginInput : string
@@ -66,6 +77,8 @@ let InitModel =
         page = Home
         currentKey = 0
         currentValue = ""
+        nonBoleroValue = ""
+        nonBoleroResult = ""
         items = Map.empty
         lastError = None
         loginInput = ""
@@ -78,6 +91,10 @@ type Message =
     | SetPage of Page
     | SetCurrentKey of int
     | SetCurrentValue of string
+    | SetNonBoleroValue of string
+    | SetNonBoleroResult of string
+    | SendNonBoleroTest of string
+    | RecvNonBoleroTest of string
     | RefreshItems
     | AddItem
     | RemoveItem of int
@@ -93,7 +110,7 @@ type Message =
     | RecvAuthDouble of int
     | Exn of exn
 
-let Update (myApi: MyApi) msg model =
+let Update (myApi: MyApi) (myNonBoleroApi: MyNonBoleroApi) msg model =
     match msg with
     | SetPage p ->
         { model with page = p }, []
@@ -101,6 +118,15 @@ let Update (myApi: MyApi) msg model =
         { model with currentKey = i }, []
     | SetCurrentValue v ->
         { model with currentValue = v }, []
+    | SetNonBoleroValue v ->
+        { model with nonBoleroValue = v }, []
+    | SetNonBoleroResult v ->
+        { model with nonBoleroResult = v }, []
+    | SendNonBoleroTest v ->
+        model,
+        Cmd.OfAsync.either myNonBoleroApi.echo {| value = v |} RecvNonBoleroTest Exn
+    | RecvNonBoleroTest v ->
+        { model with nonBoleroResult = v }, []
     | RefreshItems ->
         model,
         Cmd.OfAsync.either myApi.getItems () ItemsRefreshed Exn
@@ -153,6 +179,7 @@ let router : Router<Page, Model, Message> =
 
 type Tpl = Template<"main.html">
 type Form = Template<"subdir/form.html">
+type NonBoleroForm = Template<"subdir/nonBoleroForm.html">
 
 type Item() =
     inherit ElmishComponent<KeyValuePair<int, string>, Message>()
@@ -171,9 +198,19 @@ let Display model dispatch =
             .setValue(fun e -> dispatch (SetCurrentValue (e.Value :?> string)))
             .add(fun _ -> dispatch AddItem)
             .Elt()
+
+    let nonBoleroForm =
+        NonBoleroForm()
+            .setNonBoleroValue(fun e -> dispatch (SetNonBoleroValue (e.Value :?> string)))
+            .nonBoleroValue(model.nonBoleroValue)
+            .testNonBolero(fun _ -> dispatch (SendNonBoleroTest model.nonBoleroValue))
+            .Elt()
+
     concat [
         Tpl()
             .form(form)
+            .nonBoleroForm(nonBoleroForm)
+            .nonBoleroOutput(text model.nonBoleroResult)
             .refresh(fun _ -> dispatch RefreshItems)
             .items(forEach model.items <| fun item -> ecomp<Item, _, _> [attr.key item.Key] item dispatch)
             .error(
@@ -225,10 +262,11 @@ type MyApp() =
 
     override this.Program =
         let myApi = this.Remote<MyApi>()
+        let myNonBoleroApi : MyNonBoleroApi = this.NonBoleroRemote<MyNonBoleroApi>()
         Program.mkProgram (fun _ -> InitModel, Cmd.batch [
             Cmd.ofMsg RefreshItems
             Cmd.ofMsg GetLogin
-        ]) (Update myApi) Display
+        ]) (Update myApi myNonBoleroApi) Display
         |> Program.withRouter router
 
 
